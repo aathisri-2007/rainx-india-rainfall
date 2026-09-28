@@ -1,0 +1,132 @@
+{
+  "model_name": "regime_classifier",
+  "algorithm": "RandomForestClassifier",
+  "features": [
+    "slp_anomaly",
+    "hgt500_anomaly",
+    "wind_dir_from",
+    "wind_speed_ms",
+    "rh_anomaly",
+    "monsoon_index"
+  ],
+  "training_period": [
+    "2016 monsoon (stratified)"
+  ],
+  "validation_period": [
+    "\u2014"
+  ],
+  "test_period": [
+    "2016 monsoon (stratified)"
+  ],
+  "split_method": "Stratified 70/30",
+  "training_note": "Multi-year extension (2017-2019) requires NCEP reanalysis; pipeline ready to ingest.",
+  "trained_at": "2026-09-28T15:00:57.060880Z",
+  "version": "2.1.0",
+  "metrics": {
+    "test_accuracy": 0.9285714285714286,
+    "n_train": 64,
+    "n_test": 28,
+    "labels": [
+      "active_monsoon",
+      "break_monsoon",
+      "coastal_rainfall",
+      "low_depression",
+      "quiet",
+      "western_disturbance"
+    ],
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        7,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        11,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "per_class": [
+      {
+        "regime": "active_monsoon",
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      {
+        "regime": "break_monsoon",
+        "precision": 0.875,
+        "recall": 1.0,
+        "f1": 0.933,
+        "support": 7
+      },
+      {
+        "regime": "coastal_rainfall",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      {
+        "regime": "low_depression",
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      {
+        "regime": "quiet",
+        "precision": 0.917,
+        "recall": 0.917,
+        "f1": 0.917,
+        "support": 12
+      },
+      {
+        "regime": "western_disturbance",
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,465 @@
+{
+  "data_quality": {
+    "rows": 2557098,
+    "unique_dates": 3653,
+    "unique_districts": 700,
+    "missing_rainfall": 0,
+    "missing_percent": 0.0,
+    "negative_rainfall": 0,
+    "zero_rainfall": 1534443,
+    "duplicate_date_district": 0,
+    "date_min": "2016-01-01",
+    "date_max": "2025-12-31",
+    "rainfall_mean": 3.686,
+    "rainfall_std": 11.006
+  },
+  "basic_stats": {
+    "observed": {
+      "n": 85400,
+      "mean": 8.562,
+      "total": 731235.69,
+      "min": 0.0,
+      "max": 352.669,
+      "std": 17.034,
+      "p50": 2.096,
+      "p75": 9.616,
+      "p90": 24.199,
+      "p95": 37.674,
+      "p99": 79.907
+    },
+    "raw_nwp": {
+      "n": 85400,
+      "mean": 1.389,
+      "total": 118582.24,
+      "min": 0.0,
+      "max": 82.95,
+      "std": 3.194,
+      "p50": 0.143,
+      "p75": 1.5,
+      "p90": 4.08,
+      "p95": 6.2,
+      "p99": 14.575
+    },
+    "corrected": {
+      "n": 85400,
+      "mean": 7.541,
+      "total": 643980.02,
+      "min": 0.005,
+      "max": 391.454,
+      "std": 14.834,
+      "p50": 2.339,
+      "p75": 9.373,
+      "p90": 19.914,
+      "p95": 29.012,
+      "p99": 53.376
+    }
+  },
+  "error_metrics": {
+    "raw": {
+      "n": 85400,
+      "bias": -7.174,
+      "mae": 7.73,
+      "rmse": 17.469,
+      "mape": 114.8,
+      "p95_abs_error": 34.136,
+      "max_abs_error": 349.119
+    },
+    "corrected": {
+      "n": 85400,
+      "bias": -1.022,
+      "mae": 8.856,
+      "rmse": 18.702,
+      "mape": 399.1,
+      "p95_abs_error": 33.49,
+      "max_abs_error": 382.835
+    }
+  },
+  "improvement": {
+    "rmse_pct": -7.06,
+    "mae_pct": -14.57,
+    "bias_reduction": 85.75
+  },
+  "correction": {
+    "mean_mm": 6.152,
+    "median_mm": 1.732,
+    "std_mm": 13.095,
+    "mean_pct": 942.8,
+    "positive_count": 82291,
+    "negative_count": 3109,
+    "unchanged_count": 189,
+    "max_correction_mm": 352.57,
+    "min_correction_mm": -36.91
+  },
+  "categories": {
+    "heavy": {
+      "threshold_mm": 64.5,
+      "observed": 1436,
+      "raw_nwp": 4,
+      "corrected": 516
+    },
+    "very_heavy": {
+      "threshold_mm": 115.6,
+      "observed": 342,
+      "raw_nwp": 0,
+      "corrected": 309
+    },
+    "extremely_heavy": {
+      "threshold_mm": 204.5,
+      "observed": 39,
+      "raw_nwp": 0,
+      "corrected": 98
+    }
+  },
+  "regime_stats": [
+    {
+      "regime": "unknown",
+      "n": 85400,
+      "obs_mean": 8.56,
+      "raw_bias": -7.174,
+      "corr_bias": -1.022,
+      "raw_rmse": 17.469,
+      "corr_rmse": 18.702
+    }
+  ],
+  "probability_calibration": {
+    "P_heavy": {
+      "threshold_mm": 64.5,
+      "brier": 0.01492,
+      "reliability": [
+        {
+          "bin": "0.0-0.1",
+          "n": 81650,
+          "predicted_mean": 0.011,
+          "observed_freq": 0.01
+        },
+        {
+          "bin": "0.1-0.2",
+          "n": 3053,
+          "predicted_mean": 0.125,
+          "observed_freq": 0.131
+        },
+        {
+          "bin": "0.2-0.3",
+          "n": 481,
+          "predicted_mean": 0.237,
+          "observed_freq": 0.279
+        },
+        {
+          "bin": "0.3-0.5",
+          "n": 216,
+          "predicted_mean": 0.356,
+          "observed_freq": 0.384
+        },
+        {
+          "bin": "0.5-0.7",
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": "0.7-1.0",
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        }
+      ]
+    },
+    "P_very_heavy": {
+      "threshold_mm": 115.6,
+      "brier": 0.00371,
+      "reliability": [
+        {
+          "bin": "0.0-0.1",
+          "n": 85242,
+          "predicted_mean": 0.004,
+          "observed_freq": 0.004
+        },
+        {
+          "bin": "0.1-0.2",
+          "n": 85,
+          "predicted_mean": 0.139,
+          "observed_freq": 0.176
+        },
+        {
+          "bin": "0.2-0.3",
+          "n": 50,
+          "predicted_mean": 0.233,
+          "observed_freq": 0.22
+        },
+        {
+          "bin": "0.3-0.5",
+          "n": 21,
+          "predicted_mean": 0.35,
+          "observed_freq": 0.429
+        },
+        {
+          "bin": "0.5-0.7",
+          "n": 2,
+          "predicted_mean": 0.546,
+          "observed_freq": 1.0
+        },
+        {
+          "bin": "0.7-1.0",
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        }
+      ]
+    },
+    "P_extremely_heavy": {
+      "threshold_mm": 204.5,
+      "brier": 0.00053,
+      "reliability": [
+        {
+          "bin": "0.0-0.1",
+          "n": 85339,
+          "predicted_mean": 0.0,
+          "observed_freq": 0.0
+        },
+        {
+          "bin": "0.1-0.2",
+          "n": 2,
+          "predicted_mean": 0.128,
+          "observed_freq": 0.5
+        },
+        {
+          "bin": "0.2-0.3",
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        },
+        {
+          "bin": "0.3-0.5",
+          "n": 57,
+          "predicted_mean": 0.412,
+          "observed_freq": 0.053
+        },
+        {
+          "bin": "0.5-0.7",
+          "n": 2,
+          "predicted_mean": 0.655,
+          "observed_freq": 0.5
+        },
+        {
+          "bin": "0.7-1.0",
+          "n": 0,
+          "predicted_mean": null,
+          "observed_freq": null
+        }
+      ]
+    }
+  },
+  "fss_by_neighborhood": {
+    "heavy": {
+      "threshold_mm": 64.5,
+      "values": [
+        {
+          "neighborhood": 1,
+          "fss": 0.054
+        },
+        {
+          "neighborhood": 3,
+          "fss": 0.0727
+        },
+        {
+          "neighborhood": 5,
+          "fss": 0.0959
+        },
+        {
+          "neighborhood": 7,
+          "fss": 0.1172
+        },
+        {
+          "neighborhood": 9,
+          "fss": 0.1352
+        }
+      ]
+    },
+    "very_heavy": {
+      "threshold_mm": 115.6,
+      "values": [
+        {
+          "neighborhood": 1,
+          "fss": 0.0625
+        },
+        {
+          "neighborhood": 3,
+          "fss": 0.0703
+        },
+        {
+          "neighborhood": 5,
+          "fss": 0.0863
+        },
+        {
+          "neighborhood": 7,
+          "fss": 0.1041
+        },
+        {
+          "neighborhood": 9,
+          "fss": 0.1228
+        }
+      ]
+    },
+    "extremely_heavy": {
+      "threshold_mm": 204.5,
+      "values": [
+        {
+          "neighborhood": 1,
+          "fss": 0.0293
+        },
+        {
+          "neighborhood": 3,
+          "fss": 0.0324
+        },
+        {
+          "neighborhood": 5,
+          "fss": 0.0512
+        },
+        {
+          "neighborhood": 7,
+          "fss": 0.0642
+        },
+        {
+          "neighborhood": 9,
+          "fss": 0.0727
+        }
+      ]
+    }
+  },
+  "model_metadata": {
+    "model_name": "regime_classifier",
+    "algorithm": "RandomForestClassifier",
+    "features": [
+      "slp_anomaly",
+      "hgt500_anomaly",
+      "wind_dir_from",
+      "wind_speed_ms",
+      "rh_anomaly",
+      "monsoon_index"
+    ],
+    "training_period": [
+      "2016-06-01",
+      "2016-07-15"
+    ],
+    "validation_period": [
+      "2016-07-16",
+      "2016-07-25"
+    ],
+    "test_period": [
+      "2016-07-26",
+      "2016-08-31"
+    ],
+    "trained_at": "2026-09-28T01:17:30.171603Z",
+    "version": "1.0.0",
+    "metrics": {
+      "validation_accuracy": 0.8,
+      "test_accuracy": 0.8378378378378378,
+      "n_train": 45,
+      "n_val": 10,
+      "n_test": 37,
+      "labels": [
+        "active_monsoon",
+        "break_monsoon",
+        "coastal_rainfall",
+        "low_depression",
+        "quiet",
+        "western_disturbance"
+      ],
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          0,
+          0,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          0,
+          17,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "per_class": [
+        {
+          "regime": "active_monsoon",
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 0
+        },
+        {
+          "regime": "break_monsoon",
+          "precision": 1.0,
+          "recall": 0.714,
+          "f1": 0.833,
+          "support": 7
+        },
+        {
+          "regime": "coastal_rainfall",
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 2
+        },
+        {
+          "regime": "low_depression",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 8
+        },
+        {
+          "regime": "quiet",
+          "precision": 0.81,
+          "recall": 0.895,
+          "f1": 0.85,
+          "support": 19
+        },
+        {
+          "regime": "western_disturbance",
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.667,
+          "support": 1
+        }
+      ]
+    }
+  },
+  "generated_at": "2026-09-28T14:25:31.813818+00:00"
+}

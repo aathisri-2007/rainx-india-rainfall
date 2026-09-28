@@ -1,0 +1,5 @@
+regime,n,rmse_raw,rmse_corr,bias_raw,bias_corr,csi_light_raw,csi_light_corr,pod_light_corr,csi_moderate_raw,csi_moderate_corr,pod_moderate_corr,csi_heavy_raw,csi_heavy_corr,pod_heavy_corr
+break_monsoon,2800,22.25,23.862,-8.137,0.657,0.339,0.557,0.764,0.025,0.108,0.211,0.0,0.0,0.0
+coastal_rainfall,1400,21.653,20.695,-10.615,-2.578,0.462,0.672,0.828,0.055,0.149,0.229,0.0,0.032,0.034
+low_depression,700,15.687,16.55,-6.201,1.124,0.379,0.575,0.813,0.01,0.108,0.202,0.0,0.0,0.0
+quiet,8400,18.458,19.33,-6.816,0.529,0.383,0.562,0.773,0.047,0.141,0.257,0.0,0.013,0.015

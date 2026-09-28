@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RainX · India Rainfall Forecast Post-Processing</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Inter',-apple-system,sans-serif;background:#f5f7fb;color:#0a2540;
+  display:grid;grid-template-rows:64px 1fr;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;}
+
+/* ============ SPLASH SCREEN ============ */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#ffffff 0%,#f0f9ff 50%,#e0f2fe 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.6s ease,visibility 0.6s ease;
+}
+#splash.hide{opacity:0;visibility:hidden;}
+#splash img{
+  width:280px;height:280px;object-fit:contain;
+  animation:splashIn 0.8s ease-out;
+}
+#splash .splash-title{
+  font-size:1.5rem;font-weight:700;color:#0a2540;
+  margin-top:8px;letter-spacing:-0.02em;
+  animation:splashTextIn 1s ease-out 0.3s both;
+}
+#splash .splash-sub{
+  font-size:0.9rem;color:#64748b;margin-top:4px;
+  animation:splashTextIn 1s ease-out 0.5s both;
+}
+#splash .splash-loader{
+  width:180px;height:3px;background:#e2e8f0;border-radius:3px;
+  overflow:hidden;margin-top:32px;
+  animation:splashTextIn 1s ease-out 0.7s both;
+}
+#splash .splash-loader-bar{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,#0ea5e9,#22c55e);
+  border-radius:3px;
+  animation:splashLoad 2s ease-out forwards;
+}
+@keyframes splashIn{
+  from{opacity:0;transform:scale(0.85);}
+  to{opacity:1;transform:scale(1);}
+}
+@keyframes splashTextIn{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes splashLoad{
+  0%{width:0%;}
+  60%{width:75%;}
+  100%{width:100%;}
+}
+
+/* ============ HEADER ============ */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 28px;
+  background:linear-gradient(90deg,#0a2540 0%,#0d3055 100%);border-bottom:1px solid #1e3a5f;color:#fff;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-logo{width:36px;height:36px;object-fit:contain;}
+.brand-title{font-size:1.05rem;font-weight:700;letter-spacing:-0.01em;line-height:1;}
+.brand-title .rainx{color:#38bdf8;font-weight:800;}
+.brand-sub{font-size:0.68rem;color:#94a3b8;margin-top:4px;letter-spacing:0.02em;}
+.hstatus{display:flex;align-items:center;gap:20px;font-size:0.8rem;color:#94a3b8;}
+.hstatus .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;
+  box-shadow:0 0 0 3px rgba(74,222,128,0.15);animation:pulse 2s infinite;display:inline-block;margin-right:8px;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,0.15);}50%{box-shadow:0 0 0 6px rgba(74,222,128,0);}}
+.hstatus b{color:#e2e8f0;font-weight:600;}
+.layout{display:grid;grid-template-columns:240px 1fr;overflow:hidden;}
+aside{background:linear-gradient(180deg,#0a2540 0%,#0d2f52 100%);padding:16px 0;overflow-y:auto;border-right:1px solid #1e3a5f;}
+.nav-section{font-size:0.66rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;padding:14px 20px 6px;}
+.nav{display:flex;align-items:center;gap:12px;padding:10px 20px;margin:2px 8px;border-radius:10px;
+  color:#cbd5e1;font-size:0.87rem;font-weight:500;cursor:pointer;transition:all 0.15s ease;user-select:none;}
+.nav:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav.active{background:rgba(0,163,224,0.14);color:#fff;box-shadow:inset 3px 0 0 #00a3e0;}
+.nav svg{width:16px;height:16px;flex-shrink:0;}
+.sidebar-footer{margin-top:24px;padding:16px 20px 0;border-top:1px solid rgba(255,255,255,0.08);
+  font-size:0.7rem;color:#64748b;line-height:1.85;}
+.sidebar-footer b{color:#94a3b8;font-weight:600;display:block;margin-bottom:6px;}
+.sidebar-footer .ok{color:#4ade80;}
+main{padding:28px 36px;overflow-y:auto;animation:fadeIn 0.25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.pt{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
+.ps{font-size:0.87rem;color:#64748b;margin-top:4px;margin-bottom:24px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
+.kpi{background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #e8eef6;
+  box-shadow:0 1px 3px rgba(10,37,64,0.04),0 8px 24px rgba(10,37,64,0.05);transition:all 0.2s ease;}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 2px 6px rgba(10,37,64,0.06),0 12px 32px rgba(10,37,64,0.10);}
+.kl{font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.kd{width:6px;height:6px;border-radius:50%;}
+.kv{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;line-height:1.1;}
+.ks{font-size:0.72rem;color:#94a3b8;margin-top:5px;}
+.panel{background:#fff;border-radius:14px;padding:20px 22px;border:1px solid #e8eef6;
+  box-shadow:0 1px 3px rgba(10,37,64,0.04),0 8px 24px rgba(10,37,64,0.05);margin-bottom:18px;}
+.panel h3{font-size:0.95rem;font-weight:600;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.psub{font-size:0.78rem;color:#94a3b8;font-weight:400;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+table{width:100%;border-collapse:collapse;font-size:0.83rem;}
+th{text-align:left;padding:9px 11px;font-size:0.68rem;color:#64748b;text-transform:uppercase;
+  letter-spacing:0.06em;font-weight:600;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+td{padding:9px 11px;border-bottom:1px solid #f1f5f9;color:#334155;}
+tbody tr:hover{background:#f8fafc;cursor:pointer;}
+tbody tr:last-child td{border-bottom:none;}
+.map-container{height:600px;position:relative;border-radius:12px;overflow:hidden;background:#f8fafc;}
+.empty{padding:40px;text-align:center;color:#94a3b8;font-style:italic;}
+canvas{max-height:340px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.68rem;font-weight:600;}
+.badge-regime{background:#e0f2fe;color:#075985;}
+.best{color:#22c55e;font-weight:700;}
+.heatmap{display:grid;gap:2px;font-size:0.75rem;}
+.hm-cell{padding:8px 4px;text-align:center;border-radius:4px;color:#fff;font-weight:600;}
+.hm-label{color:#64748b;font-weight:500;font-size:0.7rem;padding:8px 6px;text-align:right;line-height:1.2;}
+.pipeline{display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;flex-wrap:wrap;}
+.pbox{background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:14px 18px;min-width:140px;text-align:center;}
+.pbox.active{border-color:#00a3e0;background:#eff8ff;}
+.plabel{font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:6px;}
+.pvalue{font-size:0.95rem;font-weight:700;color:#0a2540;}
+.pvalue.big{font-size:1.3rem;}
+.parrow{color:#94a3b8;font-size:1.4rem;}
+.ctrl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+.ctrl label{font-size:0.7rem;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;}
+select,.sb{font-family:inherit;font-size:0.85rem;padding:8px 12px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#0a2540;outline:none;cursor:pointer;}
+select:focus,.sb:focus{border-color:#00a3e0;box-shadow:0 0 0 3px rgba(0,163,224,0.12);}
+.modal-bg{position:fixed;inset:0;background:rgba(10,37,64,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-box{background:#fff;border-radius:16px;max-width:680px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.mrow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;}
+.mname{font-size:1.5rem;font-weight:700;}
+.mstate{font-size:0.85rem;color:#64748b;margin-top:4px;}
+.mbadge{padding:8px 14px;font-size:0.8rem;border-radius:999px;font-weight:600;}
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;}
+.mstat{background:#f8fafc;border-radius:12px;padding:16px 18px;border:1px solid #e8eef6;}
+.mstat-label{font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:8px;}
+.mstat-value{font-size:1.5rem;font-weight:700;}
+.mstat-sub{font-size:0.72rem;color:#94a3b8;margin-top:4px;}
+.mclose{background:#0a2540;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;font-size:0.82rem;}
+.mclose:hover{background:#0d3055;}
+.meta-panel{background:#0a2540;color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:18px;}
+.meta-panel h3{color:#fff;font-size:1rem;margin-bottom:14px;}
+.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
+.meta-cell .label{font-size:0.66rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;}
+.meta-cell .value{font-size:1.15rem;font-weight:700;margin-top:4px;}
+.meta-line{font-size:0.76rem;color:#cbd5e1;line-height:1.9;}
+.meta-line b{color:#fff;}
+</style>
+</head>
+<body>
+
+<!-- ============ SPLASH SCREEN ============ -->
+<div id="splash">
+  <img src="/static/logo.png" alt="RainX">
+  <div class="splash-title"><span style="color:#38bdf8;">Rain</span>X</div>
+  <div class="splash-sub">Regime-Aware AI/ML Post-Processing for Monsoon Rainfall Forecasts</div>
+  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+</div>
+
+<header>
+  <div class="brand">
+    <img class="brand-logo" src="/static/logo.png" alt="RainX">
+    <div>
+      <div class="brand-title"><span class="rainx">Rain</span>X</div>
+      <div class="brand-sub">Regime-Aware AI/ML Post-Processing for Monsoon Rainfall Forecasts</div>
+    </div>
+  </div>
+  <div class="hstatus">
+    <span><span class="dot"></span>Live · Operational</span>
+    <span>Region: <b>India · 733 districts</b></span>
+    <span>Models: <b>3</b></span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="nav-section">Navigation</div>
+    <div class="nav active" data-page="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Overview</div>
+    <div class="nav" data-page="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>Forecast Map</div>
+    <div class="nav" data-page="regimes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Weather Regimes</div>
+    <div class="nav" data-page="postproc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 2v20M2 12h20"/></svg>Post-Processing</div>
+    <div class="nav" data-page="district"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>District Forecast</div>
+    <div class="nav" data-page="verify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Verification</div>
+    <div class="nav" data-page="analytics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics</div>
+    <div class="sidebar-footer">
+      <b>ML Models</b>
+      <span class="ok">● Regime classifier · 92.9%</span><br>
+      <span class="ok">● Bias correction · RF+QM</span><br>
+      <span class="ok">● Probability · AUC 0.88–0.97</span>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script>
+// ============ SPLASH SCREEN ============
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('hide');
+  }, 3000);   // Show for 2.2 seconds, then fade out
+});
+
+const fmt=(v,d=1)=>(v==null||isNaN(v))?'—':Number(v).toFixed(d);
+const pct2=(v)=>(v==null||isNaN(v))?'—':(v*100).toFixed(2)+'%';
+const REG={active_monsoon:'#0ea5e9',break_monsoon:'#8b5cf6',low_depression:'#dc2626',
+  coastal_rainfall:'#22c55e',orographic_rainfall:'#f59e0b',western_disturbance:'#64748b',quiet:'#94a3b8'};
+const REG_LABEL={active_monsoon:'Active Monsoon',break_monsoon:'Break Monsoon',low_depression:'Low/Depression',
+  coastal_rainfall:'Coastal Rainfall',orographic_rainfall:'Orographic Rainfall',western_disturbance:'Western Disturbance',quiet:'Quiet'};
+const main=document.getElementById('main');
+let GEO=null, LIVE=null, ROWS_CACHE=null;
+
+document.querySelectorAll('.nav').forEach(el=>el.addEventListener('click',()=>{
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');render(el.dataset.page);}));
+
+async function loadGeo(){ if(GEO)return GEO; GEO=await fetch('/api/live_map_data').then(r=>r.json()); return GEO; }
+async function loadLive(){ if(LIVE)return LIVE; LIVE=await fetch('/api/live_summary').then(r=>r.json()); return LIVE; }
+async function loadRows(){ if(ROWS_CACHE)return ROWS_CACHE; ROWS_CACHE=await fetch('/api/live_districts').then(r=>r.json()); return ROWS_CACHE; }
+
+async function render(page){
+  main.innerHTML='<div class="empty">Loading…</div>';
+  try{
+    if(page==='overview') await pageOverview();
+    else if(page==='map') await pageMap();
+    else if(page==='regimes') await pageRegimes();
+    else if(page==='postproc') await pagePostproc();
+    else if(page==='district') await pageDistrict();
+    else if(page==='verify') await pageVerify();
+    else if(page==='analytics') await pageAnalytics();
+  }catch(e){main.innerHTML='<div class="empty">Error: '+e.message+'</div>';console.error(e);}
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModalFromRow(r){
+  if(!r) return;
+  const rc=REG[r.regime_label]||'#64748b';
+  const delta=(+r.pred_regime_feat||0)-(+r.gefs_mm||0);
+  const html=`
+    <div class="modal-bg" id="mBg">
+      <div class="modal-box">
+        <div class="mrow">
+          <div><div class="mname">${r.district}</div><div class="mstate">${r.state}</div></div>
+          <span class="mbadge" style="background:${rc}20;color:${rc};">${REG_LABEL[r.regime_label]||r.regime_label||'—'}</span>
+        </div>
+        <div class="mgrid">
+          <div class="mstat"><div class="mstat-label">Raw NWP (GFS)</div><div class="mstat-value">${fmt(r.gefs_mm)} mm</div></div>
+          <div class="mstat" style="border-color:${rc}40;background:${rc}08;"><div class="mstat-label">Corrected Forecast</div><div class="mstat-value" style="color:${rc};">${fmt(r.pred_regime_feat)} mm</div><div class="mstat-sub">Δ ${delta>0?'+':''}${fmt(delta)} mm</div></div>
+          <div class="mstat"><div class="mstat-label">P(≥ 64.5 mm)</div><div class="mstat-value">${pct2(r.P_heavy)}</div></div>
+          <div class="mstat"><div class="mstat-label">P(≥ 115.6 mm)</div><div class="mstat-value">${pct2(r.P_very_heavy)}</div></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="mclose" onclick="showFeatures('${r.district_id}')">Atmospheric features</button>
+          <button class="mclose" onclick="showTimeSeries('${r.district_id}','${r.district}')">Time-series chart</button>
+          <button class="mclose" onclick="document.getElementById('mBg').remove()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  document.getElementById('mBg').addEventListener('click',e=>{if(e.target.id==='mBg')e.target.remove();});
+}
+
+async function openModalByName(districtName){
+  const rows=await loadRows();
+  const r=rows.find(x=>x.district===districtName);
+  if(r) openModalFromRow(r);
+}
+
+async function showFeatures(districtId){
+  const d=await fetch('/api/district_features/'+districtId).then(r=>r.json());
+  if(!d.available){ alert(d.message||'No data'); return; }
+  const f=d.features;
+  const val=(v,u='')=> v==null ? '—' : Number(v).toFixed(2)+u;
+  const html=`
+    <div class="modal-bg" id="fBg">
+      <div class="modal-box">
+        <div class="mrow">
+          <div><div class="mname">${d.district}</div><div class="mstate">${d.state} · Atmospheric features</div></div>
+          <span class="mbadge" style="background:#0a2540;color:#fff;">${(d.regime||'—').replace(/_/g,' ')} ${d.regime_confidence!=null?' · '+(d.regime_confidence*100).toFixed(0)+'%':''}</span>
+        </div>
+        <div class="mgrid">
+          <div class="mstat"><div class="mstat-label">SLP anomaly</div><div class="mstat-value">${val(f.slp_anomaly,' hPa')}</div></div>
+          <div class="mstat"><div class="mstat-label">500 hPa height anomaly</div><div class="mstat-value">${val(f.hgt500_anomaly,' m')}</div></div>
+          <div class="mstat"><div class="mstat-label">Wind direction (FROM)</div><div class="mstat-value">${f.wind_dir_from==null?'—':Number(f.wind_dir_from).toFixed(0)+'°'}</div></div>
+          <div class="mstat"><div class="mstat-label">Wind speed</div><div class="mstat-value">${val(f.wind_speed_ms,' m/s')}</div></div>
+          <div class="mstat"><div class="mstat-label">Relative humidity anomaly</div><div class="mstat-value">${val(f.rh_anomaly,' %')}</div></div>
+          <div class="mstat"><div class="mstat-label">Monsoon index</div><div class="mstat-value">${val(f.monsoon_index)}</div></div>
+        </div>
+        <div style="background:#f8fafc;border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:0.85rem;color:#475569;">
+          <b>Raw NWP:</b> ${d.raw_nwp_mm} mm · <b>Corrected:</b> ${d.corrected_mm} mm
+        </div>
+        <button class="mclose" onclick="document.getElementById('fBg').remove()">Close</button>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  document.getElementById('fBg').addEventListener('click',e=>{if(e.target.id==='fBg')e.target.remove();});
+}
+
+async function showTimeSeries(districtId, districtName){
+  const d=await fetch('/api/time_series/'+districtId).then(r=>r.json());
+  if(!d.available){ alert(d.message||'No time-series data for this district'); return; }
+  const html=`
+    <div class="modal-bg" id="tsBg">
+      <div class="modal-box" style="max-width:900px;">
+        <div class="mrow"><div><div class="mname">${districtName}</div><div class="mstate">Observed · Raw NWP · Corrected</div></div></div>
+        <canvas id="tsChart" height="140"></canvas>
+        <div style="display:flex;gap:10px;margin-top:20px;"><button class="mclose" onclick="document.getElementById('tsBg').remove()">Close</button></div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  document.getElementById('tsBg').addEventListener('click',e=>{if(e.target.id==='tsBg')e.target.remove();});
+  new Chart(document.getElementById('tsChart'),{type:'line',
+    data:{labels:d.dates,datasets:[
+      {label:'Observed',data:d.observed,borderColor:'#0a2540',backgroundColor:'#0a254020',borderWidth:2,pointRadius:2,tension:0.25,fill:false},
+      {label:'Raw NWP',data:d.raw_nwp,borderColor:'#94a3b8',backgroundColor:'#94a3b820',borderWidth:2,pointRadius:2,tension:0.25,fill:false,borderDash:[5,4]},
+      {label:'Corrected',data:d.corrected,borderColor:'#00a3e0',backgroundColor:'#00a3e020',borderWidth:2,pointRadius:2,tension:0.25,fill:false},
+    ]},
+    options:{plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:11}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10},maxTicksLimit:12}},
+              y:{title:{display:true,text:'Rainfall (mm)'},grid:{color:'#e8eef6'}}}}});
+}
+
+// ============================================================
+// MAP
+// ============================================================
+async function drawMap(divId, layer){
+  const el=document.getElementById(divId); if(!el) return;
+  el.innerHTML='<div class="empty">Loading map…</div>';
+  const gj=await loadGeo();
+  if(!gj||!gj.features||!gj.features.length){ el.innerHTML='<div class="empty">No map data.</div>'; return; }
+  const features=gj.features.filter(f=>f.geometry&&f.geometry.coordinates);
+  const isProb=layer==='p_heavy';
+  const locations=features.map(f=>f.properties.district);
+  const zvals=features.map(f=>{const v=f.properties[layer]; return (v==null||isNaN(v))?null:+v;});
+  const zmax=isProb?1:Math.max(20, Math.max(...zvals.filter(v=>v!=null), 0));
+  const trace={type:'choropleth',geojson:{type:'FeatureCollection',features:features},
+    locations:locations,z:zvals,featureidkey:'properties.district',
+    colorscale:isProb?[[0,'#f1f5f9'],[0.2,'#bae6fd'],[0.4,'#60a5fa'],[0.6,'#f59e0b'],[0.8,'#dc2626'],[1,'#7f1d1d']]
+                     :[[0,'#f1f5f9'],[0.02,'#bae6fd'],[0.1,'#60a5fa'],[0.25,'#34d399'],[0.43,'#f59e0b'],[0.75,'#dc2626'],[1,'#7f1d1d']],
+    zmin:0,zmax:zmax,colorbar:{title:isProb?'P':'mm',thickness:14,len:0.75},
+    text:features.map(f=>f.properties.district+' ('+f.properties.state_name+')'),
+    customdata:features.map(f=>[f.properties.regime,f.properties.raw_mm,f.properties.rain_mm]),
+    hovertemplate:'<b>%{text}</b><br>Regime: %{customdata[0]}<br>Raw: %{customdata[1]:.1f} mm<br>Corrected: %{customdata[2]:.1f} mm<extra></extra>',
+    marker:{line:{width:0.3,color:'rgba(10,37,64,0.25)'}}};
+  const layout={height:el.clientHeight||600,margin:{l:0,r:0,t:0,b:0},
+    geo:{visible:false,projection:{type:'mercator'},lataxis:{range:[6,38]},lonaxis:{range:[68,98]},
+         bgcolor:'#f8fafc',showcountries:false,showcoastlines:false,showland:false,showframe:false},
+    paper_bgcolor:'rgba(0,0,0,0)'};
+  el.innerHTML='';
+  Plotly.newPlot(el,[trace],layout,{displayModeBar:false,responsive:true});
+  el.on('plotly_click',data=>{
+    if(!data.points||!data.points.length) return;
+    const dname=data.points[0].location;
+    if(dname) openModalByName(dname);
+  });
+}
+
+async function drawRegimeMap(divId){
+  const el=document.getElementById(divId);
+  el.innerHTML='<div class="empty">Loading regime map…</div>';
+  const gj=await loadGeo(); const rows=await loadRows();
+  if(!gj||!rows.length){ el.innerHTML='<div class="empty">No data.</div>'; return; }
+  const regMap={}; rows.forEach(r=>{regMap[r.district]=r.regime_label||'-';});
+  const confMap={}; rows.forEach(r=>{confMap[r.district]=r.regime_confidence||0;});
+  const features=gj.features.filter(f=>f.geometry&&f.geometry.coordinates);
+  const locations=features.map(f=>f.properties.district);
+  const regimeList=['quiet','active_monsoon','break_monsoon','low_depression','coastal_rainfall','orographic_rainfall','western_disturbance'];
+  const regimeIndex=Object.fromEntries(regimeList.map((r,i)=>[r,i]));
+  const colorscale=[[0.00,'#f1f5f9'],[0.14,'#0ea5e9'],[0.29,'#8b5cf6'],[0.43,'#dc2626'],[0.57,'#22c55e'],[0.71,'#f59e0b'],[0.86,'#64748b'],[1.00,'#94a3b8']];
+  const zvals=features.map(f=>{const r=regMap[f.properties.district]; return r in regimeIndex?regimeIndex[r]:0;});
+  const trace={type:'choropleth',geojson:{type:'FeatureCollection',features:features},
+    locations:locations,z:zvals,featureidkey:'properties.district',
+    colorscale:colorscale,zmin:0,zmax:regimeList.length-1,
+    colorbar:{title:'Regime',thickness:14,len:0.75,tickmode:'array',
+      tickvals:regimeList.map((_,i)=>i),ticktext:regimeList.map(r=>REG_LABEL[r]||r)},
+    text:features.map(f=>f.properties.district+' ('+f.properties.state_name+')'),
+    customdata:features.map(f=>[REG_LABEL[regMap[f.properties.district]]||regMap[f.properties.district]||'-',((confMap[f.properties.district]||0)*100).toFixed(0)+'%']),
+    hovertemplate:'<b>%{text}</b><br>Regime: %{customdata[0]}<br>Confidence: %{customdata[1]}<extra></extra>',
+    marker:{line:{width:0.3,color:'rgba(10,37,64,0.25)'}}};
+  const layout={height:el.clientHeight||600,margin:{l:0,r:0,t:0,b:0},
+    geo:{visible:false,projection:{type:'mercator'},lataxis:{range:[6,38]},lonaxis:{range:[68,98]},
+         bgcolor:'#f8fafc',showcountries:false,showcoastlines:false,showland:false,showframe:false},
+    paper_bgcolor:'rgba(0,0,0,0)'};
+  el.innerHTML='';
+  Plotly.newPlot(el,[trace],layout,{displayModeBar:false,responsive:true});
+}
+
+// ============================================================
+// PAGE 1 — OVERVIEW
+// ============================================================
+async function pageOverview(){
+  const d = await loadLive();
+  if(!d.available){
+    main.innerHTML = `
+      <div class="pt">Overview</div>
+      <div class="panel" style="background:#fffbeb;border-color:#fde68a;">
+        <h3 style="color:#92400e;">No live forecast available</h3>
+        <p style="font-size:0.88rem;color:#78350f;line-height:1.7;margin-top:8px;">Run these commands to generate today's forecast:</p>
+        <pre style="background:#fff;padding:14px;border-radius:8px;font-size:0.82rem;margin-top:10px;color:#334155;font-family:ui-monospace,monospace;">python fetch_realtime.py
+python compute_district_regimes_live.py</pre>
+      </div>`;
+    return;
+  }
+  const rc = REG[d.regime] || '#64748b';
+  const cards = [
+    {l:'Weather Regime', v:REG_LABEL[d.regime]||d.regime, s:'Detected from GFS', c:rc},
+    {l:'Districts', v:d.n_districts, s:'All India coverage', c:'#00a3e0'},
+    {l:'Mean Corrected', v:fmt(d.mean_corrected)+' mm', s:'Raw NWP: '+fmt(d.mean_raw)+' mm', c:'#22c55e'},
+    {l:'Heavy Alerts', v:d.heavy_count, s:'≥ 64.5 mm corrected', c:'#f59e0b'},
+    {l:'Very Heavy', v:d.very_heavy_count, s:'≥ 115.6 mm corrected', c:'#dc2626'},
+  ];
+  const kpis = cards.map(c=>`<div class="kpi"><div class="kl"><span class="kd" style="background:${c.c}"></span>${c.l}</div><div class="kv">${c.v}</div><div class="ks">${c.s}</div></div>`).join('');
+  const topRows = d.top_districts.slice(0,12).map(r=>`<tr data-id="${r.district_id}">
+    <td><b>${r.district}</b></td><td>${r.state}</td>
+    <td><span class="badge badge-regime">${REG_LABEL[r.regime_label]||r.regime_label}</span></td>
+    <td>${fmt(r.gefs_mm)}</td><td><b>${fmt(r.pred_regime_feat)}</b></td>
+    <td>${r.P_heavy!=null?pct2(r.P_heavy):'—'}</td></tr>`).join('');
+  main.innerHTML = `
+    <div class="pt">Overview</div>
+    <div class="ps">Operational regime-aware rainfall forecast · latest available cycle</div>
+    <div class="kpis">${kpis}</div>
+    <div class="two">
+      <div class="panel"><h3>Top 12 districts — corrected rainfall</h3>
+        <table id="topTbl"><thead><tr><th>District</th><th>State</th><th>Regime</th><th>Raw (mm)</th><th>Corrected (mm)</th><th>P(Heavy)</th></tr></thead><tbody>${topRows}</tbody></table>
+      </div>
+      <div class="panel"><h3>Rainfall intensity distribution <span class="psub">all ${d.n_districts} districts</span></h3>
+        <canvas id="ovPie"></canvas></div>
+    </div>
+    <div class="panel"><h3>India corrected rainfall map</h3>
+      <div id="ovMap" class="map-container"></div>
+    </div>`;
+  document.getElementById('topTbl').addEventListener('click', e=>{
+    const tr = e.target.closest('tr'); if(!tr || !tr.dataset.id) return;
+    const r = d.top_districts.find(x=>String(x.district_id)===String(tr.dataset.id));
+    if(r) openModalFromRow(r);
+  });
+  const rows = await loadRows();
+  const buckets = [
+    {label:'Dry (0 mm)', color:'#f1f5f9', t:v=>v<0.1},
+    {label:'Light (<2.5)', color:'#bae6fd', t:v=>v>=0.1&&v<2.5},
+    {label:'Moderate (2.5–20)', color:'#60a5fa', t:v=>v>=2.5&&v<20},
+    {label:'Rather heavy (20–64.5)', color:'#34d399', t:v=>v>=20&&v<64.5},
+    {label:'Heavy (64.5–115.5)', color:'#f59e0b', t:v=>v>=64.5&&v<115.6},
+    {label:'Very heavy (115.6–204)', color:'#dc2626', t:v=>v>=115.6&&v<204.5},
+    {label:'Extremely heavy (≥204.5)', color:'#7f1d1d', t:v=>v>=204.5},
+  ];
+  const counts = buckets.map(b=>rows.filter(r=>b.t(+r.pred_regime_feat||0)).length);
+  new Chart(document.getElementById('ovPie'), {
+    type:'doughnut',
+    data:{labels:buckets.map(b=>b.label),
+      datasets:[{data:counts,backgroundColor:buckets.map(b=>b.color),borderColor:'#fff',borderWidth:2}]},
+    options:{cutout:'62%',plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,usePointStyle:true}}}}
+  });
+  await new Promise(r=>setTimeout(r,100));
+  drawMap('ovMap','rain_mm');
+}
+
+// ============================================================
+// PAGE 2 — FORECAST MAP
+// ============================================================
+async function pageMap(){
+  main.innerHTML=`
+    <div class="pt">Forecast Map</div>
+    <div class="ps">India · corrected rainfall · raw NWP · probability · regime</div>
+    <div class="ctrl">
+      <label>Layer</label>
+      <select id="mapLayer">
+        <option value="rain_mm">Corrected Rainfall (mm)</option>
+        <option value="raw_mm">Raw NWP Rainfall (mm)</option>
+        <option value="p_heavy">P(Rainfall ≥ 64.5 mm)</option>
+        <option value="regime">Weather Regime</option>
+      </select>
+    </div>
+    <div class="panel" style="padding:14px;"><div id="bigMap" class="map-container"></div></div>`;
+  await new Promise(r=>setTimeout(r,100));
+  drawMap('bigMap','rain_mm');
+  document.getElementById('mapLayer').addEventListener('change',e=>{
+    document.getElementById('bigMap').innerHTML='';
+    const layer=e.target.value;
+    if(layer==='regime') drawRegimeMap('bigMap');
+    else drawMap('bigMap',layer);
+  });
+}
+
+// ============================================================
+// PAGE 3 — WEATHER REGIMES
+// ============================================================
+async function pageRegimes(){
+  const meta=await fetch('/api/regime_metadata').then(r=>r.json());
+  if(!meta.available){main.innerHTML='<div class="empty">Classifier metadata not available.</div>';return;}
+  const impRows=meta.importances.map((x,i)=>`<tr><td>${i+1}</td><td><b>${x.feature}</b></td><td>${x.importance.toFixed(3)}</td></tr>`).join('');
+  const clsRows=meta.classification.map(c=>`<tr><td><span class="badge badge-regime">${REG_LABEL[c.regime]||c.regime}</span></td>
+    <td>${c.precision.toFixed(3)}</td><td>${c.recall.toFixed(3)}</td><td>${c.f1.toFixed(3)}</td><td>${c.support}</td></tr>`).join('');
+  main.innerHTML=`
+    <div class="pt">Weather Regime Classifier</div>
+    <div class="ps">Random Forest · physical regime labels from atmospheric reanalysis</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#22c55e"></span>Test accuracy</div><div class="kv">${(meta.accuracy*100).toFixed(1)}%</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#00a3e0"></span>Features</div><div class="kv">${meta.features.length}</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#8b5cf6"></span>Classes</div><div class="kv">${meta.labels.length}</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#f59e0b"></span>Train days</div><div class="kv">${meta.n_train_days}</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#dc2626"></span>Test days</div><div class="kv">${meta.n_test_days}</div></div>
+    </div>
+    <div class="two">
+      <div class="panel"><h3>Feature importance</h3><canvas id="fi"></canvas></div>
+      <div class="panel"><h3>Confusion matrix <span class="psub">actual ↓ · predicted →</span></h3><div id="cmH"></div></div>
+    </div>
+    <div class="two">
+      <div class="panel"><h3>Per-regime performance</h3>
+        <table><thead><tr><th>Regime</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead><tbody>${clsRows}</tbody></table>
+      </div>
+      <div class="panel"><h3>Top features</h3>
+        <table><thead><tr><th>#</th><th>Feature</th><th>Importance</th></tr></thead><tbody>${impRows}</tbody></table>
+      </div>
+    </div>`;
+  new Chart(document.getElementById('fi'),{type:'bar',
+    data:{labels:meta.importances.map(x=>x.feature),
+      datasets:[{data:meta.importances.map(x=>x.importance),backgroundColor:'#00a3e0',borderRadius:6}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#e8eef6'}},y:{grid:{display:false}}}}});
+  const cm=meta.confusion_matrix; const mx=Math.max(...cm.flat());
+  const h=['<div class="heatmap" style="grid-template-columns:110px repeat('+meta.labels.length+',1fr);">'];
+  h.push('<div></div>');
+  meta.labels.forEach(l=>h.push('<div style="text-align:center;font-size:0.62rem;color:#64748b;font-weight:600;padding:4px;">'+(REG_LABEL[l]||l)+'</div>'));
+  meta.labels.forEach((rl,i)=>{
+    h.push('<div class="hm-label">'+(REG_LABEL[rl]||rl)+'</div>');
+    meta.labels.forEach((cl,j)=>{
+      const v=cm[i][j]; const a=mx>0?v/mx:0;
+      const bg=v>0?`rgba(0,163,224,${0.15+a*0.85})`:'#f8fafc';
+      const col=a>0.5?'#fff':'#0a2540';
+      h.push(`<div class="hm-cell" style="background:${bg};color:${col};">${v}</div>`);
+    });
+  });
+  h.push('</div>');
+  document.getElementById('cmH').innerHTML=h.join('');
+}
+
+// ============================================================
+// PAGE 4 — POST-PROCESSING
+// ============================================================
+async function pagePostproc(){
+  const [cmp,sc,bias]=await Promise.all([
+    fetch('/api/model_comparison').then(r=>r.json()),
+    fetch('/api/scatter_data?n=600').then(r=>r.json()),
+    fetch('/api/bias_by_range').then(r=>r.json()),
+  ]);
+  const best=cmp.available?cmp.models.reduce((a,b)=>a.rmse<b.rmse?a:b):null;
+  const mRows=cmp.available?cmp.models.map(m=>`<tr><td>${m.name}</td>
+    <td class="${best&&m.rmse===best.rmse?'best':''}">${m.rmse}</td>
+    <td>${m.mae}</td><td>${m.bias}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">No data</td></tr>';
+  const bRows=bias.map(r=>`<tr><td><b>${r.bucket} mm</b></td><td>${r.n}</td><td>${fmt(r.raw_bias,2)}</td><td>${fmt(r.corr_bias,2)}</td></tr>`).join('');
+  main.innerHTML=`
+    <div class="pt">ML Post-Processing Pipeline</div>
+    <div class="ps">Raw NWP → Regime → Regime-aware correction → Corrected rainfall</div>
+    <div class="panel"><h3>Pipeline architecture</h3>
+      <div class="pipeline">
+        <div class="pbox"><div class="plabel">Raw NWP</div><div class="pvalue big">GFS</div></div>
+        <div class="parrow">→</div>
+        <div class="pbox"><div class="plabel">Regime Classifier</div><div class="pvalue">Random Forest</div></div>
+        <div class="parrow">→</div>
+        <div class="pbox active"><div class="plabel">Regime-Aware Correction</div><div class="pvalue">RF + Regime Features</div></div>
+        <div class="parrow">→</div>
+        <div class="pbox active"><div class="plabel">Output</div><div class="pvalue big">Corrected mm</div></div>
+      </div>
+    </div>
+    <div class="panel"><h3>Model comparison <span class="psub">metrics on held-out test set</span></h3>
+      <table><thead><tr><th>Model</th><th>RMSE</th><th>MAE</th><th>Bias</th></tr></thead><tbody>${mRows}</tbody></table>
+    </div>
+    <div class="two">
+      <div class="panel"><h3>Corrected vs Observed</h3><canvas id="scChart"></canvas></div>
+      <div class="panel"><h3>Bias by rainfall range</h3>
+        <table><thead><tr><th>Range</th><th>n</th><th>Raw bias</th><th>Corr bias</th></tr></thead><tbody>${bRows}</tbody></table>
+      </div>
+    </div>`;
+  if(sc.corrected && sc.corrected.length){
+    const pts=sc.corrected.slice(0,500);
+    new Chart(document.getElementById('scChart'),{type:'scatter',
+      data:{datasets:[
+        {label:'Corrected',data:pts.map(p=>({x:p[1],y:p[0]})),backgroundColor:'#00a3e0',pointRadius:3},
+        {label:'1:1',data:[{x:0,y:0},{x:200,y:200}],type:'line',borderColor:'#94a3b8',borderDash:[4,4],pointRadius:0,fill:false}
+      ]},
+      options:{plugins:{legend:{position:'bottom'}},
+        scales:{x:{title:{display:true,text:'Observed (mm)'},grid:{color:'#e8eef6'}},
+                y:{title:{display:true,text:'Predicted (mm)'},grid:{color:'#e8eef6'}}}}});
+  }
+}
+
+// ============================================================
+// PAGE 5 — DISTRICT FORECAST
+// ============================================================
+async function pageDistrict(){
+  const rows=await loadRows();
+  if(!rows.length){main.innerHTML='<div class="empty">No live forecast.</div>';return;}
+  const states=[...new Set(rows.map(r=>r.state))].sort();
+  const sOpt='<option value="">All states</option>'+states.map(s=>`<option value="${s}">${s}</option>`).join('');
+  main.innerHTML=`
+    <div class="pt">District Forecast</div>
+    <div class="ps">Search, filter, inspect every district</div>
+    <div class="ctrl">
+      <label>State</label><select id="dS">${sOpt}</select>
+      <label>Search</label><input class="sb" id="dQ" placeholder="type district name…" style="width:220px;cursor:text;">
+      <span id="dC" style="font-size:0.8rem;color:#64748b;margin-left:auto;"></span>
+    </div>
+    <div class="panel" style="padding:0;"><div style="max-height:640px;overflow:auto;">
+      <table id="dT"><thead><tr><th>District</th><th>State</th><th>Regime</th><th>Raw NWP</th><th>Corrected</th><th>P(Heavy)</th><th>P(Very)</th><th>P(Extr.)</th></tr></thead><tbody></tbody></table>
+    </div></div>`;
+  const tb=document.querySelector('#dT tbody');
+  const cEl=document.getElementById('dC');
+  const rowHtml=r=>`<tr data-id="${r.district_id}">
+    <td><b>${r.district}</b></td><td>${r.state}</td>
+    <td><span class="badge badge-regime">${REG_LABEL[r.regime_label]||r.regime_label}</span></td>
+    <td>${fmt(r.gefs_mm)}</td><td><b>${fmt(r.pred_regime_feat)}</b></td>
+    <td>${pct2(r.P_heavy)}</td><td>${pct2(r.P_very_heavy)}</td><td>${pct2(r.P_extremely_heavy)}</td></tr>`;
+  function apply(){
+    const s=document.getElementById('dS').value;
+    const q=document.getElementById('dQ').value.toLowerCase();
+    const f=rows.filter(r=>(!s||r.state===s)&&(!q||r.district.toLowerCase().includes(q)));
+    tb.innerHTML=f.slice(0,300).map(rowHtml).join('');
+    cEl.textContent=`${f.length} of ${rows.length} districts`;
+  }
+  apply();
+  document.getElementById('dS').addEventListener('change',apply);
+  document.getElementById('dQ').addEventListener('input',apply);
+  tb.addEventListener('click',e=>{
+    const tr=e.target.closest('tr'); if(!tr||!tr.dataset.id) return;
+    const r=rows.find(x=>String(x.district_id)===tr.dataset.id);
+    if(r) openModalFromRow(r);
+  });
+}
+
+// ============================================================
+// PAGE 6 — VERIFICATION
+// ============================================================
+async function pageVerify(){
+  const [vr,vbr]=await Promise.all([
+    fetch('/api/verification').then(r=>r.json()),
+    fetch('/api/verification_by_regime').then(r=>r.json()),
+  ]);
+  const byThr={};
+  vr.forEach(r=>{if(!byThr[r.threshold])byThr[r.threshold]={raw:{},corr:{}};
+    if(r.model==='Raw')byThr[r.threshold].raw=r;
+    if(r.model==='Corrected')byThr[r.threshold].corr=r;});
+  const tl=Object.keys(byThr);
+  const rows=tl.map(t=>{const r=byThr[t].raw,c=byThr[t].corr;return `<tr><td><b>${t}</b></td>
+    <td>${fmt(r.POD,3)}</td><td>${fmt(c.POD,3)}</td>
+    <td>${fmt(r.FAR,3)}</td><td>${fmt(c.FAR,3)}</td>
+    <td>${fmt(r.CSI,3)}</td><td class="best">${fmt(c.CSI,3)}</td>
+    <td>${fmt(r.ETS,3)}</td><td>${fmt(c.ETS,3)}</td>
+    <td>${fmt(r.FSS,3)}</td><td>${fmt(c.FSS,3)}</td></tr>`;}).join('');
+  const rRows=vbr.map(r=>`<tr><td><b>${REG_LABEL[r.regime]||r.regime}</b></td><td>${r.n}</td>
+    <td>${fmt(r.rmse_raw,2)}</td><td>${fmt(r.rmse_corr,2)}</td>
+    <td>${fmt(r.csi_light_corr,3)}</td><td>${fmt(r.csi_moderate_corr,3)}</td><td>${fmt(r.csi_heavy_corr,3)}</td></tr>`).join('');
+  main.innerHTML=`
+    <div class="pt">Verification</div>
+    <div class="ps">Raw NWP vs regime-aware corrected forecast · measured against observations</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#00a3e0"></span>RMSE (raw)</div><div class="kv" id="kRMSEraw">—</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#22c55e"></span>RMSE (corrected)</div><div class="kv" id="kRMSEcor">—</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#22c55e"></span>Bias reduction</div><div class="kv" id="kBiasRed">—</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#f59e0b"></span>Heavy hits</div><div class="kv" id="kHeavyHits">—</div></div>
+    </div>
+    <div class="panel"><h3>Event skill metrics</h3>
+      <table><thead><tr><th>Threshold</th><th>POD raw</th><th>POD corr</th><th>FAR raw</th><th>FAR corr</th><th>CSI raw</th><th>CSI corr</th><th>ETS raw</th><th>ETS corr</th><th>FSS raw</th><th>FSS corr</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <div class="panel"><h3>CSI comparison</h3><canvas id="csiBar"></canvas></div>
+    <div class="panel"><h3>Per-regime skill</h3>
+      <table><thead><tr><th>Regime</th><th>n</th><th>RMSE raw</th><th>RMSE corr</th><th>CSI light</th><th>CSI mod.</th><th>CSI heavy</th></tr></thead><tbody>${rRows}</tbody></table>
+    </div>`;
+  const ana=await fetch('/api/analytics').then(r=>r.json()).catch(()=>null);
+  if(ana && ana.available){
+    const em=ana.error_metrics||{}, imp=ana.improvement||{}, cats=ana.categories||{};
+    if(em.raw) document.getElementById('kRMSEraw').textContent=(em.raw.rmse||'—')+' mm';
+    if(em.corrected) document.getElementById('kRMSEcor').textContent=(em.corrected.rmse||'—')+' mm';
+    if(imp.bias_reduction!=null) document.getElementById('kBiasRed').textContent=imp.bias_reduction.toFixed(1)+'%';
+    if(cats.heavy) document.getElementById('kHeavyHits').textContent=`${cats.heavy.raw_nwp} → ${cats.heavy.corrected}`;
+  }
+  new Chart(document.getElementById('csiBar'),{type:'bar',
+    data:{labels:tl,datasets:[
+      {label:'Raw',data:tl.map(t=>byThr[t].raw.CSI),backgroundColor:'#94a3b8',borderRadius:6},
+      {label:'Corrected',data:tl.map(t=>byThr[t].corr.CSI),backgroundColor:'#00a3e0',borderRadius:6}
+    ]},
+    options:{plugins:{legend:{position:'top'}},scales:{x:{grid:{display:false}},y:{grid:{color:'#e8eef6'}}}}});
+}
+
+// ============================================================
+// PAGE 7 — ANALYTICS
+// ============================================================
+async function pageAnalytics(){
+  main.innerHTML='<div class="empty">Computing analytics…</div>';
+  const d=await fetch('/api/analytics').then(r=>r.json());
+  if(!d.available){main.innerHTML='<div class="empty">Run compute_analytics.py first.</div>';return;}
+  const meta=await fetch('/api/model_metadata').then(r=>r.json()).catch(()=>({available:false}));
+  const fn=(v,dp=2)=>(v==null||isNaN(v))?'—':Number(v).toFixed(dp);
+  const pn=(v)=>(v==null)?'—':(v>0?'+':'')+v.toFixed(2)+'%';
+  let metaHTML='';
+  if(meta && meta.available){
+    const m=meta.metrics||{}; const cm=m.confusion_matrix||[]; const pc=m.per_class||[];
+    const cmRows=cm.map((row,i)=>`<tr><td style="font-size:0.72rem;color:#94a3b8;text-align:right;">${REG_LABEL[m.labels[i]]||m.labels[i]}</td>${row.map(v=>`<td style="text-align:center;font-weight:600;">${v}</td>`).join('')}</tr>`).join('');
+    const pcRows=pc.map(p=>`<tr><td><b>${REG_LABEL[p.regime]||p.regime}</b></td>
+      <td>${p.precision.toFixed(3)}</td><td>${p.recall.toFixed(3)}</td>
+      <td>${p.f1.toFixed(3)}</td><td>${p.support}</td></tr>`).join('');
+    metaHTML=`
+      <div class="meta-panel">
+        <h3>Model Metadata</h3>
+        <div class="meta-grid">
+          <div class="meta-cell"><div class="label">Algorithm</div><div class="value">${meta.algorithm}</div></div>
+          <div class="meta-cell"><div class="label">Version</div><div class="value">${meta.version}</div></div>
+          <div class="meta-cell"><div class="label">Test accuracy</div><div class="value" style="color:#4ade80;">${(m.test_accuracy*100).toFixed(1)}%</div></div>
+          <div class="meta-cell"><div class="label">Train / Test</div><div class="value">${m.n_train}/${m.n_test}</div></div>
+        </div>
+        <div class="meta-line">
+          <b>Training:</b> ${meta.training_period[0]} · <b>Test:</b> ${meta.test_period[0]}<br>
+          <b>Split method:</b> ${meta.split_method||'Stratified 70/30'} · <b>Samples:</b> ${m.n_train} train / ${m.n_test} test<br>
+          <b>Features:</b> ${meta.features.join(' · ')}
+          ${meta.training_note ? '<br><span style="color:#94a3b8;font-size:0.72rem;">'+meta.training_note+'</span>' : ''}
+        </div>
+      </div>
+      <div class="two">
+        <div class="panel"><h3>Confusion Matrix <span class="psub">rows=actual · cols=predicted</span></h3>
+          <table><thead><tr><th></th>${m.labels.map(l=>`<th style="font-size:0.6rem;">${REG_LABEL[l]||l}</th>`).join('')}</tr></thead>
+          <tbody>${cmRows}</tbody></table>
+        </div>
+        <div class="panel"><h3>Per-Regime Classifier Performance</h3>
+          <table><thead><tr><th>Regime</th><th>Precision</th><th>Recall</th><th>F1</th><th>n</th></tr></thead>
+          <tbody>${pcRows}</tbody></table>
+        </div>
+      </div>`;
+  }
+  const dq=d.data_quality||{};
+  const dqHTML=`
+    <div class="kpis">
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#00a3e0"></span>Rows</div><div class="kv">${(dq.rows||0).toLocaleString()}</div><div class="ks">${dq.unique_dates||0} dates · ${dq.unique_districts||0} districts</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#22c55e"></span>Missing</div><div class="kv">${dq.missing_rainfall||0}</div><div class="ks">${fn(dq.missing_percent,4)}%</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#f59e0b"></span>Negative</div><div class="kv">${dq.negative_rainfall||0}</div><div class="ks">Zeros: ${(dq.zero_rainfall||0).toLocaleString()}</div></div>
+      <div class="kpi"><div class="kl"><span class="kd" style="background:#dc2626"></span>Duplicates</div><div class="kv">${dq.duplicate_date_district||0}</div><div class="ks">date + district</div></div>
+    </div>
+    <div style="font-size:0.8rem;color:#64748b;margin-bottom:20px;">Range: <b>${dq.date_min||'—'}</b> → <b>${dq.date_max||'—'}</b> · Mean: <b>${fn(dq.rainfall_mean)} mm</b></div>`;
+  const bs=d.basic_stats||{};
+  const rowsBS=(label,o)=>`<tr><td><b>${label}</b></td>
+    <td>${fn(o.mean)}</td><td>${fn(o.std)}</td><td>${fn(o.min)}</td><td>${fn(o.max)}</td>
+    <td>${fn(o.p50)}</td><td>${fn(o.p90)}</td><td>${fn(o.p99)}</td></tr>`;
+  const bsHTML=`<table><thead><tr><th>Series</th><th>Mean</th><th>Std</th><th>Min</th><th>Max</th><th>P50</th><th>P90</th><th>P99</th></tr></thead>
+    <tbody>${rowsBS('Observed',bs.observed||{})}${rowsBS('Raw NWP',bs.raw_nwp||{})}${rowsBS('Corrected',bs.corrected||{})}</tbody></table>`;
+  const em=d.error_metrics||{};
+  const rowsEM=(label,o)=>`<tr><td><b>${label}</b></td>
+    <td>${fn(o.bias)}</td><td>${fn(o.mae)}</td><td>${fn(o.rmse)}</td>
+    <td>${fn(o.mape)}%</td><td>${fn(o.p95_abs_error)}</td><td>${fn(o.max_abs_error)}</td></tr>`;
+  const emHTML=`<table><thead><tr><th>Model</th><th>Bias</th><th>MAE</th><th>RMSE</th><th>MAPE</th><th>P95 |Err|</th><th>Max |Err|</th></tr></thead>
+    <tbody>${rowsEM('Raw NWP',em.raw||{})}${rowsEM('Corrected',em.corrected||{})}</tbody></table>`;
+  const imp=d.improvement||{};
+  const impHTML=`
+    <div class="kpis">
+      <div class="kpi"><div class="kl">RMSE improvement</div><div class="kv" style="color:${(imp.rmse_pct||0)>0?'#22c55e':'#dc2626'};">${pn(imp.rmse_pct)}</div></div>
+      <div class="kpi"><div class="kl">MAE improvement</div><div class="kv" style="color:${(imp.mae_pct||0)>0?'#22c55e':'#dc2626'};">${pn(imp.mae_pct)}</div></div>
+      <div class="kpi"><div class="kl">Bias reduction</div><div class="kv" style="color:${(imp.bias_reduction||0)>0?'#22c55e':'#dc2626'};">${pn(imp.bias_reduction)}</div></div>
+    </div>`;
+  const corr=d.correction||{};
+  const corrHTML=`
+    <div class="kpis">
+      <div class="kpi"><div class="kl">Mean correction</div><div class="kv">${fn(corr.mean_mm)} mm</div><div class="ks">Median: ${fn(corr.median_mm)} · Std: ${fn(corr.std_mm)}</div></div>
+      <div class="kpi"><div class="kl">Increased</div><div class="kv">${corr.positive_count||0}</div></div>
+      <div class="kpi"><div class="kl">Decreased</div><div class="kv">${corr.negative_count||0}</div></div>
+      <div class="kpi"><div class="kl">Max / Min</div><div class="kv" style="font-size:1rem;">${fn(corr.max_correction_mm)} / ${fn(corr.min_correction_mm)}</div></div>
+    </div>`;
+  const cats=d.categories||{};
+  const catRows=['heavy','very_heavy','extremely_heavy'].map(k=>{
+    const c=cats[k]||{};
+    return `<tr><td><b>${k.replace(/_/g,' ')}</b></td><td>${c.threshold_mm||'—'} mm</td>
+      <td>${c.observed||0}</td><td>${c.raw_nwp||0}</td><td>${c.corrected||0}</td></tr>`;
+  }).join('');
+  const regRows=(d.regime_stats||[]).map(r=>`
+    <tr><td><b>${REG_LABEL[r.regime]||r.regime}</b></td><td>${r.n}</td><td>${fn(r.obs_mean)}</td>
+      <td>${fn(r.raw_bias,3)}</td><td>${fn(r.corr_bias,3)}</td>
+      <td>${fn(r.raw_rmse,2)}</td><td>${fn(r.corr_rmse,2)}</td></tr>`).join('');
+  const cal=d.probability_calibration||{};
+  const calCards=['P_heavy','P_very_heavy','P_extremely_heavy'].map(k=>{
+    const c=cal[k]; if(!c) return '';
+    const bins=(c.reliability||[]).filter(b=>b.n>0);
+    const rows=bins.map(b=>`<tr><td>${b.bin}</td><td>${b.n}</td>
+      <td>${(b.predicted_mean*100).toFixed(1)}%</td><td>${(b.observed_freq*100).toFixed(1)}%</td></tr>`).join('');
+    return `<div class="panel"><h3>${k.replace('P_','').replace(/_/g,' ')} <span class="psub">Brier: ${c.brier}</span></h3>
+      <table><thead><tr><th>Prob bin</th><th>n</th><th>Predicted</th><th>Observed</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" class="empty">No samples</td></tr>'}</tbody></table></div>`;
+  }).join('');
+  const fss=d.fss_by_neighborhood||{};
+  const fssRows=['heavy','very_heavy','extremely_heavy'].map(k=>{
+    const f=fss[k]; if(!f) return '';
+    return `<tr><td><b>${k.replace(/_/g,' ')}</b></td><td>${f.threshold_mm} mm</td>
+      ${f.values.map(v=>`<td>${v.fss==null?'—':v.fss.toFixed(4)}</td>`).join('')}</tr>`;
+  }).join('');
+  main.innerHTML=metaHTML+`
+    <div class="pt">Analytics</div>
+    <div class="ps">Every scientific metric computed from real data · formulas alongside results</div>
+    <div class="panel"><h3>1. Data Quality</h3>${dqHTML}</div>
+    <div class="panel"><h3>2. Basic Rainfall Statistics <span class="psub">test set</span></h3>${bsHTML}</div>
+    <div class="panel"><h3>3. Error Metrics</h3>${emHTML}</div>
+    <div class="panel"><h3>4. Improvement from Correction</h3>${impHTML}</div>
+    <div class="panel"><h3>5. Bias Correction Amounts</h3>${corrHTML}</div>
+    <div class="panel"><h3>6. Operational Rainfall Categories</h3>
+      <table><thead><tr><th>Category</th><th>Threshold</th><th>Observed</th><th>Raw NWP</th><th>Corrected</th></tr></thead><tbody>${catRows}</tbody></table>
+    </div>
+    <div class="panel"><h3>7. Per-Regime Model Skill</h3>
+      <table><thead><tr><th>Regime</th><th>n</th><th>Obs mean</th><th>Raw bias</th><th>Corr bias</th><th>Raw RMSE</th><th>Corr RMSE</th></tr></thead><tbody>${regRows}</tbody></table>
+    </div>
+    <div class="two">${calCards}</div>
+    <div class="panel"><h3>8. FSS by spatial neighborhood</h3>
+      <table><thead><tr><th>Threshold</th><th>mm</th><th>n=1</th><th>n=3</th><th>n=5</th><th>n=7</th><th>n=9</th></tr></thead>
+      <tbody>${fssRows||'<tr><td colspan="7" class="empty">No FSS data</td></tr>'}</tbody></table>
+    </div>`;
+}
+
+render('overview');
+</script>
+</body>
+</html>

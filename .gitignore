@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+cache/
+herbie_cache/
+scripts/
+*.log
+
+# Large files — will not be pushed to GitHub
+data/admin/district_nwic.GeoJSON
+data/admin/district_nwic_wgs84.geojson
+data/district_daily_rainfall_2016_2025.csv
+models/bias_correction_models.joblib
