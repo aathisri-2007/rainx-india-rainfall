@@ -1,15 +1,14 @@
 """
-Derive per-district regimes using:
-  - global daily regime
-  - district geography
-  - district rainfall relative to the day's distribution (quantile-based)
+Derive per-district regimes using the global daily regime + district geography
++ rainfall intensity. Runs on cloud (no reanalysis files needed).
 """
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
-REPORTS = Path(__file__).parent / "reports"
-MAPPING = Path(__file__).parent / "data" / "grid_to_district.csv"
+BASE = Path(__file__).parent
+REPORTS = BASE / "reports"
+MAPPING = BASE / "data" / "grid_to_district.csv"
 
 print("Loading grid mapping...")
 mapping = pd.read_csv(MAPPING).dropna(subset=["district_id"]).copy()
@@ -34,7 +33,6 @@ def geography(lat, lon):
 centroids["geo"] = centroids.apply(lambda r: geography(r.latitude, r.longitude), axis=1)
 print("\nGeographic classification:")
 print(centroids["geo"].value_counts())
-
 
 live_file = REPORTS / "realtime_forecast.csv"
 if not live_file.exists():
@@ -68,13 +66,9 @@ def refine(row):
     rain = row.get("pred_regime_feat", 0) or 0
     g = global_regime
 
-    # Low / break monsoon dominate synoptically
-    if g == "low_depression":
-        return "low_depression"
-    if g == "break_monsoon":
-        return "break_monsoon"
+    if g == "low_depression":   return "low_depression"
+    if g == "break_monsoon":    return "break_monsoon"
 
-    # Active monsoon: split by geography
     if g == "active_monsoon":
         if geo == "orographic_west"  and rain >= q75: return "orographic_rainfall"
         if geo == "orographic_north" and rain >= q75: return "orographic_rainfall"
@@ -83,19 +77,16 @@ def refine(row):
         if rain >= q90: return "active_monsoon"
         return "quiet"
 
-    # Western disturbance
     if g == "western_disturbance":
         if geo == "nw_india" and rain >= q75: return "western_disturbance"
         if rain >= q95: return "western_disturbance"
         return "quiet"
 
-    # Coastal regime globally
     if g == "coastal_rainfall":
         if geo in ("coastal_east", "coastal_west") and rain >= q50: return "coastal_rainfall"
         if geo in ("orographic_west", "orographic_north") and rain >= q75: return "orographic_rainfall"
         return "quiet"
 
-    # Global quiet — but still allow local orographic / coastal regimes
     if geo == "orographic_west"  and rain >= q90: return "orographic_rainfall"
     if geo == "orographic_north" and rain >= q90: return "orographic_rainfall"
     if geo in ("coastal_east", "coastal_west") and rain >= q90: return "coastal_rainfall"
@@ -105,7 +96,6 @@ def refine(row):
 
 live["regime_label"] = live.apply(refine, axis=1)
 
-# Confidence: 0.5 (quiet) to 0.9 (strong geo+rain match)
 def confidence(row):
     geo = row.get("geo", "interior")
     regime = row["regime_label"]
@@ -119,14 +109,11 @@ def confidence(row):
         ("central",          "low_depression"):       0.85,
     }
     base = match.get((geo, regime), 0.60)
-    # Small boost if rainfall is high
     if rain >= q90: base = min(base + 0.05, 0.95)
     return round(base, 3)
 
 
 live["regime_confidence"] = live.apply(confidence, axis=1)
-
-# Save copies of the old global regime for comparison
 live["global_regime"] = global_regime
 
 print("\nPer-district regime distribution:")

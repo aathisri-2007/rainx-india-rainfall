@@ -63,24 +63,18 @@ def region_mean(da, lat_lo, lat_hi, lon_lo, lon_hi):
 
 
 def load_reanalysis_climatology():
-    """Mean of JJA 2016 for each region variable, used as anomaly baseline."""
-    print("Loading reanalysis climatology...")
-    clim = {}
-    for name in ["slp", "uwnd_10m", "vwnd_10m", "rhum", "hgt_500"]:
-        p = REAN / f"{name}.nc"
-        if not p.exists():
-            print(f"  missing: {p.name}")
-            continue
-        ds = xr.open_dataset(p)
-        ren = {}
-        for c in ds.coords:
-            if c == "lat": ren[c] = "latitude"
-            if c == "lon": ren[c] = "longitude"
-        if ren:
-            ds = ds.rename(ren)
-        ds = ds.sel(time=slice("2016-06-01", "2016-08-31"))
-        clim[name] = ds
-    return clim
+    """
+    Pre-computed JJA 2016 climatology values.
+    These are constants — same for every run.
+    """
+    print("Using pre-computed JJA 2016 climatology.")
+    return {
+        "slp_trough_pa": 100243.9,
+        "u_as":         5.5,
+        "v_as":         5.0,
+        "rh_ci":        79.19,
+        "hgt_nw":       5863.4,
+    }
 
 
 def clim_mean(clim, name, var, box):
@@ -117,11 +111,11 @@ def fetch_gfs(days_back=1):
 def main():
     clim = load_reanalysis_climatology()
 
-    slp_clim_pa = clim_mean(clim, "slp",      "slp",  SLP_TROUGH)
-    u_clim      = clim_mean(clim, "uwnd_10m", "uwnd", UAS)
-    v_clim      = clim_mean(clim, "vwnd_10m", "vwnd", UAS)
-    rh_clim     = clim_mean(clim, "rhum",     "rhum", RHUM_CI)
-    hgt_clim    = clim_mean(clim, "hgt_500",  "hgt",  HGT_NW)
+    slp_clim_pa = clim["slp_trough_pa"]
+    u_clim      = clim["u_as"]
+    v_clim      = clim["v_as"]
+    rh_clim     = clim["rh_ci"]
+    hgt_clim    = clim["hgt_nw"]
 
     print(f"\nClimatology baselines:")
     print(f"  slp_trough = {slp_clim_pa:.1f} Pa")
