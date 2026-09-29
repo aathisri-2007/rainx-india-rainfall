@@ -12,4 +12,3 @@ scripts/
 data/admin/district_nwic.GeoJSON
 data/admin/district_nwic_wgs84.geojson
 data/district_daily_rainfall_2016_2025.csv
-models/bias_correction_models.joblib
